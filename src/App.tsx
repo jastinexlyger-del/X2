@@ -19,7 +19,9 @@ import {
   Pause,
   Play,
   Upload,
-  X
+  X,
+  Copy,
+  Check
 } from 'lucide-react';
 
 interface Message {
@@ -91,6 +93,7 @@ function App() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -260,43 +263,69 @@ How can I help you?`,
 
   const handleVoiceMessage = async (audioBlob: Blob) => {
     try {
-      // Convert blob to text using speech recognition
-      const transcript = await MediaService.startSpeechRecognition();
-      
-      const voiceMessage: Message = {
-        id: Date.now().toString(),
-        type: 'user',
-        content: `🎤 ${transcript}`,
-        timestamp: new Date(),
-        mode: currentMode.id
-      };
-      
-      setMessages(prev => [...prev, voiceMessage]);
-      
-      // Generate AI response
-      setIsTyping(true);
-      const conversationHistory = getConversationHistory();
-      const aiResponseText = await geminiService.generateResponse(transcript, conversationHistory);
-      
-      const aiResponse: Message = {
-        id: (Date.now() + 1).toString(),
-        type: 'ai',
-        content: aiResponseText,
-        timestamp: new Date(),
-        mode: currentMode.id
-      };
-      
-      setMessages(prev => [...prev, aiResponse]);
-      
-      // Optionally speak the response
-      MediaService.speakText(aiResponseText);
+      // Check if speech recognition is supported
+      if (!MediaService.isSpeechRecognitionSupported()) {
+        const errorMessage: Message = {
+          id: Date.now().toString(),
+          type: 'ai',
+          content: "Voice recognition is not supported in your browser. Please use a modern browser like Chrome or Edge, or type your message instead.",
+          timestamp: new Date(),
+          mode: currentMode.id
+        };
+        setMessages(prev => [...prev, errorMessage]);
+        return;
+      }
+
+      try {
+        // Convert blob to text using speech recognition
+        const transcript = await MediaService.startSpeechRecognition();
+        
+        const voiceMessage: Message = {
+          id: Date.now().toString(),
+          type: 'user',
+          content: `🎤 ${transcript}`,
+          timestamp: new Date(),
+          mode: currentMode.id
+        };
+        
+        setMessages(prev => [...prev, voiceMessage]);
+        
+        // Generate AI response
+        setIsTyping(true);
+        const conversationHistory = getConversationHistory();
+        const aiResponseText = await geminiService.generateResponse(transcript, conversationHistory);
+        
+        const aiResponse: Message = {
+          id: (Date.now() + 1).toString(),
+          type: 'ai',
+          content: aiResponseText,
+          timestamp: new Date(),
+          mode: currentMode.id
+        };
+        
+        setMessages(prev => [...prev, aiResponse]);
+        
+        // Optionally speak the response if supported
+        if (MediaService.isSpeechSynthesisSupported()) {
+          MediaService.speakText(aiResponseText);
+        }
+      } catch (speechError) {
+        const errorMessage: Message = {
+          id: Date.now().toString(),
+          type: 'ai',
+          content: "I couldn't understand your voice message. Please try speaking clearly or type your message instead.",
+          timestamp: new Date(),
+          mode: currentMode.id
+        };
+        setMessages(prev => [...prev, errorMessage]);
+      }
       
     } catch (error) {
       console.error('Voice processing error:', error);
       const errorMessage: Message = {
         id: Date.now().toString(),
         type: 'ai',
-        content: "I couldn't process your voice message. Please try typing instead.",
+        content: "There was an error processing your voice message. Please try typing instead.",
         timestamp: new Date(),
         mode: currentMode.id
       };
@@ -545,6 +574,27 @@ How can I help you?`,
                           index % 2 === 1 ? <strong key={index}>{part}</strong> : part
                         )}
                       </div>
+                      {message.type === 'ai' && (
+                        <div className="flex justify-end mt-2 sm:mt-3">
+                          <button
+                            onClick={() => handleCopyMessage(message.id, message.content)}
+                            className="flex items-center space-x-1 px-2 py-1 text-xs text-gray-400 hover:text-white hover:bg-gray-700 rounded-md transition-colors"
+                            title="Copy message"
+                          >
+                            {copiedMessageId === message.id ? (
+                              <>
+                                <Check className="w-3 h-3" />
+                                <span>Copied!</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3 h-3" />
+                                <span>Copy</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      )}
                     </div>
                     <div className="text-xs text-gray-500 mt-1 sm:mt-2 flex items-center space-x-2">
                       <span>{message.timestamp.toLocaleTimeString()}</span>
@@ -606,10 +656,16 @@ How can I help you?`,
               
               <button
                 onClick={isRecording ? stopRecording : startRecording}
+               disabled={!MediaService.isSpeechRecognitionSupported()}
                 className={`p-2 sm:p-3 hover:bg-gray-800 rounded-xl transition-all duration-200 group ${
-                  isRecording ? 'text-red-400 bg-red-400/10' : 'text-gray-400 hover:text-pink-400'
+                 isRecording ? 'text-red-400 bg-red-400/10' : 
+                 !MediaService.isSpeechRecognitionSupported() ? 'text-gray-600 cursor-not-allowed' :
+                 'text-gray-400 hover:text-pink-400'
                 }`}
-                title={isRecording ? 'Stop recording' : 'Record voice'}
+               title={
+                 !MediaService.isSpeechRecognitionSupported() ? 'Voice recording not supported in this browser' :
+                 isRecording ? 'Stop recording' : 'Record voice'
+               }
               >
                 {isRecording ? (
                   <MicOff className="w-5 h-5 animate-pulse" />
