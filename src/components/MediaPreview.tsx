@@ -105,8 +105,8 @@ export const MediaPreview: React.FC<MediaPreviewProps> = ({ file, onClose, onSen
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-gray-900 rounded-lg max-w-2xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-4 border-b border-gray-700">
           <h3 className="text-white font-medium">Media Preview</h3>
           <button
@@ -122,7 +122,7 @@ export const MediaPreview: React.FC<MediaPreviewProps> = ({ file, onClose, onSen
             {renderPreview()}
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <div>
               <label className="block text-gray-400 text-sm mb-2">
                 Add a caption (optional)
@@ -131,21 +131,21 @@ export const MediaPreview: React.FC<MediaPreviewProps> = ({ file, onClose, onSen
                 value={caption}
                 onChange={(e) => setCaption(e.target.value)}
                 placeholder="Describe this media..."
-                className="w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 resize-none"
+                className="w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-pink-500 resize-none text-sm sm:text-base"
                 rows={3}
               />
             </div>
 
-            <div className="flex space-x-3">
+            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
               <button
                 onClick={onClose}
-                className="flex-1 py-3 px-4 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                className="flex-1 py-3 px-4 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm sm:text-base"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSend}
-                className="flex-1 py-3 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+                className="flex-1 py-3 px-4 bg-pink-500 hover:bg-pink-600 text-white rounded-lg transition-colors text-sm sm:text-base"
               >
                 Send
               </button>

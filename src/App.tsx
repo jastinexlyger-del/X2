@@ -75,9 +75,9 @@ const AI_MODES: AIMode[] = [
     id: 'general',
     name: 'General AI',
     icon: <Brain className="w-5 h-5" />,
-    color: '#3B82F6',
-    textColor: 'text-blue-400',
-    bgColor: 'bg-blue-500',
+    color: '#EC4899',
+    textColor: 'text-pink-400',
+    bgColor: 'bg-pink-500',
     description: 'Ask anything and get intelligent, helpful responses'
   }
 ];
@@ -90,6 +90,7 @@ function App() {
   const [showMediaPreview, setShowMediaPreview] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -355,18 +356,38 @@ How can I help you?`,
     <div className="flex h-screen bg-gray-900 text-white">
       {/* Drag and Drop Overlay */}
       {dragOver && (
-        <div className="fixed inset-0 bg-blue-500 bg-opacity-20 border-4 border-dashed border-blue-400 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 bg-pink-500 bg-opacity-20 border-4 border-dashed border-pink-400 z-50 flex items-center justify-center">
           <div className="text-center">
-            <Upload className="w-16 h-16 text-blue-400 mx-auto mb-4" />
-            <p className="text-xl font-semibold text-blue-400">Drop your file here</p>
+            <Upload className="w-16 h-16 text-pink-400 mx-auto mb-4" />
+            <p className="text-xl font-semibold text-pink-400">Drop your file here</p>
           </div>
         </div>
       )}
 
+      {/* Mobile Sidebar Overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <div className="w-80 bg-gray-800 border-r border-gray-700 flex flex-col">
+      <div className={`
+        fixed lg:relative inset-y-0 left-0 z-50 w-80 bg-gray-800 border-r border-gray-700 flex flex-col
+        transform transition-transform duration-300 ease-in-out lg:transform-none
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
         {/* Header */}
         <div className="p-6 border-b border-gray-700">
+          {/* Mobile close button */}
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden absolute top-4 right-4 text-gray-400 hover:text-white"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-gradient-to-r from-pink-500 to-purple-600 rounded-xl flex items-center justify-center">
               <span className="font-bold text-lg text-white">XL</span>
@@ -382,7 +403,7 @@ How can I help you?`,
         </div>
 
         {/* Mode Selection */}
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto flex-1">
           <h3 className="text-gray-400 text-sm font-medium mb-4 uppercase tracking-wide">AI Modes</h3>
           <div className="space-y-3">
             {AI_MODES.map((mode) => (
@@ -390,7 +411,7 @@ How can I help you?`,
                 key={mode.id}
                 onClick={() => handleModeChange(mode)}
                 className={`w-full flex items-start space-x-3 p-4 rounded-xl transition-all duration-200 hover:bg-gray-700 group ${
-                  currentMode.id === mode.id 
+                  currentMode.id === mode.id
                     ? `${mode.bgColor} text-white shadow-lg transform scale-105` 
                     : 'bg-gray-700/50 text-gray-300 hover:text-white'
                 }`}
@@ -407,41 +428,41 @@ How can I help you?`,
               </button>
             ))}
           </div>
-        </div>
+          
+          {/* New Chat Button */}
+          <div className="mt-6">
+            <button
+              onClick={handleNewChat}
+              className="w-full flex items-center justify-center space-x-2 p-4 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 rounded-xl transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:scale-105"
+            >
+              <Plus className="w-5 h-5" />
+              <span>NEW CHAT</span>
+            </button>
+          </div>
 
-        {/* New Chat Button */}
-        <div className="p-6">
-          <button
-            onClick={handleNewChat}
-            className="w-full flex items-center justify-center space-x-2 p-4 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 rounded-xl transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:scale-105"
-          >
-            <Plus className="w-5 h-5" />
-            <span>NEW CHAT</span>
-          </button>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="p-6 mt-auto">
-          <h3 className="text-gray-400 text-sm font-medium mb-4 uppercase tracking-wide">Quick Actions</h3>
-          <div className="space-y-2">
-            <button 
-              onClick={() => setInputMessage("Help me get started with XLYGER AI")}
-              className="w-full text-left p-3 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-            >
-              💡 "Help me get started"
-            </button>
-            <button 
-              onClick={() => setInputMessage("What are your capabilities?")}
-              className="w-full text-left p-3 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-            >
-              🤖 "What can you do?"
-            </button>
-            <button 
-              onClick={() => setInputMessage("Show me some examples")}
-              className="w-full text-left p-3 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-            >
-              📚 "Show me examples"
-            </button>
+          {/* Quick Actions */}
+          <div className="mt-6">
+            <h3 className="text-gray-400 text-sm font-medium mb-4 uppercase tracking-wide">Quick Actions</h3>
+            <div className="space-y-2">
+              <button 
+                onClick={() => setInputMessage("Help me get started with XLYGER AI")}
+                className="w-full text-left p-3 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                💡 "Help me get started"
+              </button>
+              <button 
+                onClick={() => setInputMessage("What are your capabilities?")}
+                className="w-full text-left p-3 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                🤖 "What can you do?"
+              </button>
+              <button 
+                onClick={() => setInputMessage("Show me some examples")}
+                className="w-full text-left p-3 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                📚 "Show me examples"
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -456,24 +477,35 @@ How can I help you?`,
         {/* Chat Header */}
         <div className="border-b border-gray-700 p-4">
           <div className="flex items-center justify-between">
+            {/* Mobile menu button */}
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden p-2 text-gray-400 hover:text-white rounded-lg"
+            >
+              <MessageSquare className="w-6 h-6" />
+            </button>
+            
             <div className="flex items-center space-x-3">
               <div className={`w-8 h-8 ${currentMode.bgColor} rounded-lg flex items-center justify-center`}>
                 {currentMode.icon}
               </div>
-              <div>
+              <div className="hidden sm:block">
                 <h2 className="font-semibold">{currentMode.name}</h2>
                 <p className="text-sm text-gray-400">{currentMode.description}</p>
+              </div>
+              <div className="sm:hidden">
+                <h2 className="font-semibold text-sm">{currentMode.name}</h2>
               </div>
             </div>
             <div className="flex items-center space-x-2">
               <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-              <span className="text-sm text-gray-400">Online</span>
+              <span className="text-sm text-gray-400 hidden sm:inline">Online</span>
             </div>
           </div>
         </div>
 
         {/* Chat Messages */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
           {messages.map((message) => {
             const messageMode = AI_MODES.find(mode => mode.id === message.mode) || currentMode;
             return (
@@ -481,43 +513,43 @@ How can I help you?`,
                 key={message.id}
                 className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                <div className={`flex space-x-3 max-w-4xl ${message.type === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}>
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                <div className={`flex space-x-2 sm:space-x-3 max-w-full sm:max-w-4xl ${message.type === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}>
+                  <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
                     message.type === 'user' 
                       ? 'bg-gradient-to-r from-blue-500 to-purple-600' 
                       : `${messageMode.bgColor}`
                   }`}>
                     {message.type === 'user' ? (
-                      <span className="text-sm font-bold">You</span>
+                      <span className="text-xs sm:text-sm font-bold">You</span>
                     ) : (
-                      <span className="text-sm font-bold">AI</span>
+                      <span className="text-xs sm:text-sm font-bold">AI</span>
                     )}
                   </div>
                   <div className={`flex-1 ${message.type === 'user' ? 'text-right' : ''}`}>
-                    <div className={`inline-block p-4 rounded-2xl max-w-full ${
+                    <div className={`inline-block p-3 sm:p-4 rounded-2xl max-w-full ${
                       message.type === 'user'
                         ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'
                         : `bg-gray-800 border border-gray-700 text-gray-100`
                     }`}>
                       {message.mediaPreview && (
-                        <div className="mb-3">
+                        <div className="mb-2 sm:mb-3">
                           <img 
                             src={message.mediaPreview} 
                             alt="Uploaded content" 
-                            className="max-w-xs rounded-lg"
+                            className="max-w-full sm:max-w-xs rounded-lg"
                           />
                         </div>
                       )}
-                      <div className="leading-relaxed whitespace-pre-wrap">
+                      <div className="leading-relaxed whitespace-pre-wrap text-sm sm:text-base">
                         {message.content.split('**').map((part, index) => 
                           index % 2 === 1 ? <strong key={index}>{part}</strong> : part
                         )}
                       </div>
                     </div>
-                    <div className="text-xs text-gray-500 mt-2 flex items-center space-x-2">
+                    <div className="text-xs text-gray-500 mt-1 sm:mt-2 flex items-center space-x-2">
                       <span>{message.timestamp.toLocaleTimeString()}</span>
                       {message.type === 'ai' && (
-                        <span className={`px-2 py-1 rounded-full text-xs ${messageMode.bgColor} text-white`}>
+                        <span className={`px-2 py-1 rounded-full text-xs ${messageMode.bgColor} text-white hidden sm:inline`}>
                           {messageMode.name}
                         </span>
                       )}
@@ -531,12 +563,12 @@ How can I help you?`,
           {/* Typing Indicator */}
           {isTyping && (
             <div className="flex justify-start">
-              <div className="flex space-x-3 max-w-4xl">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${currentMode.bgColor}`}>
-                  <span className="text-sm font-bold">AI</span>
+              <div className="flex space-x-2 sm:space-x-3 max-w-full sm:max-w-4xl">
+                <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0 ${currentMode.bgColor}`}>
+                  <span className="text-xs sm:text-sm font-bold">AI</span>
                 </div>
                 <div className="flex-1">
-                  <div className="inline-block p-4 rounded-2xl bg-gray-800 border border-gray-700">
+                  <div className="inline-block p-3 sm:p-4 rounded-2xl bg-gray-800 border border-gray-700">
                     <div className="flex space-x-1">
                       <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
                       <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
@@ -552,9 +584,9 @@ How can I help you?`,
         </div>
 
         {/* Input Area */}
-        <div className="border-t border-gray-700 p-6">
+        <div className="border-t border-gray-700 p-4 sm:p-6">
           {/* Media Controls */}
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
             <div className="flex items-center space-x-3">
               <input
                 ref={fileInputRef}
@@ -566,7 +598,7 @@ How can I help you?`,
               
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="p-3 text-gray-400 hover:text-pink-400 hover:bg-gray-800 rounded-xl transition-all duration-200 group"
+                className="p-2 sm:p-3 text-gray-400 hover:text-pink-400 hover:bg-gray-800 rounded-xl transition-all duration-200 group"
                 title="Upload file"
               >
                 <Image className="w-5 h-5 group-hover:scale-110 transition-transform" />
@@ -574,7 +606,7 @@ How can I help you?`,
               
               <button
                 onClick={isRecording ? stopRecording : startRecording}
-                className={`p-3 hover:bg-gray-800 rounded-xl transition-all duration-200 group ${
+                className={`p-2 sm:p-3 hover:bg-gray-800 rounded-xl transition-all duration-200 group ${
                   isRecording ? 'text-red-400 bg-red-400/10' : 'text-gray-400 hover:text-pink-400'
                 }`}
                 title={isRecording ? 'Stop recording' : 'Record voice'}
@@ -588,7 +620,7 @@ How can I help you?`,
               
               {isRecording && (
                 <div className="flex items-center space-x-2">
-                  <div className="flex items-center space-x-1">
+                  <div className="hidden sm:flex items-center space-x-1">
                     <div 
                       className="w-1 h-4 bg-red-400 rounded-full"
                       style={{ height: `${8 + audioLevel * 16}px` }}
@@ -602,7 +634,7 @@ How can I help you?`,
                       style={{ height: `${8 + audioLevel * 20}px` }}
                     ></div>
                   </div>
-                  <span className="text-sm text-red-400 font-mono">
+                  <span className="text-xs sm:text-sm text-red-400 font-mono">
                     {formatDuration(duration)}
                   </span>
                   {isPaused ? (
@@ -618,7 +650,7 @@ How can I help you?`,
               )}
             </div>
 
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-gray-500 hidden sm:block">
               Powered by Google Gemini AI
             </div>
           </div>
@@ -636,24 +668,24 @@ How can I help you?`,
                     handleSendMessage();
                   }
                 }}
-                placeholder="Type your message... (Shift+Enter for new line)"
-                className="w-full p-4 bg-gray-800 border border-gray-600 rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 resize-none transition-all duration-200"
+                placeholder="Type your message..."
+                className="w-full p-3 sm:p-4 bg-gray-800 border border-gray-600 rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 resize-none transition-all duration-200 text-sm sm:text-base"
                 rows={1}
-                style={{ minHeight: '56px', maxHeight: '120px' }}
+                style={{ minHeight: '48px', maxHeight: '120px' }}
               />
             </div>
             <button
               onClick={() => handleSendMessage()}
               disabled={!inputMessage.trim() || isTyping}
-              className="p-4 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed rounded-2xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:transform-none"
+              className="p-3 sm:p-4 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed rounded-2xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:transform-none"
             >
               <Send className="w-5 h-5" />
             </button>
           </div>
 
-          <div className="text-center text-xs text-gray-500 mt-4">
+          <div className="text-center text-xs text-gray-500 mt-3 sm:mt-4">
             XLYGER AI can make mistakes. Please verify important information. 
-            <span className="text-pink-400"> Made with ❤️ by Jastine Ayubu</span>
+            <span className="text-pink-400 block sm:inline"> Made with ❤️ by Jastine Ayubu</span>
           </div>
         </div>
       </div>

@@ -49,7 +49,7 @@ Provide clean, well-commented code examples with explanations. Focus on teaching
 - Learning and education support
 - General conversation and advice
 
-Be informative, accurate, and engaging. Adapt your communication style to match the user's needs and preferences.`
+Be informative, accurate, and engaging. Adapt your communication style to match the user's needs and preferences. You are designed with a friendly pink theme to make interactions warm and welcoming.`
 };
 
 export class GeminiService {
