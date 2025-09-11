@@ -1,4 +1,14 @@
 export class MediaService {
+  // Check if speech recognition is supported
+  static isSpeechRecognitionSupported(): boolean {
+    return ('webkitSpeechRecognition' in window) || ('SpeechRecognition' in window);
+  }
+
+  // Check if speech synthesis is supported
+  static isSpeechSynthesisSupported(): boolean {
+    return 'speechSynthesis' in window;
+  }
+
   // Speech-to-Text using Web Speech API
   static startSpeechRecognition(): Promise<string> {
     return new Promise((resolve, reject) => {
