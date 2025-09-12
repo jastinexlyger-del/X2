@@ -110,8 +110,8 @@ function App() {
     resumeRecording,
     cleanup
   } = useMediaRecorder({
-    onDataAvailable: (audioBlob) => {
-      handleVoiceMessage(audioBlob);
+    onDataAvailable: async (audioBlob) => {
+      await handleVoiceMessage(audioBlob);
     },
     onError: (error) => {
       console.error('Recording error:', error);
@@ -142,6 +142,29 @@ How can I assist you today?`,
     };
     setMessages([welcomeMessage]);
   }, []);
+
+  const handleCopyMessage = async (messageId: string, content: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedMessageId(messageId);
+      setTimeout(() => setCopiedMessageId(null), 2000);
+    } catch (error) {
+      console.error('Failed to copy message:', error);
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = content;
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        setCopiedMessageId(messageId);
+        setTimeout(() => setCopiedMessageId(null), 2000);
+      } catch (fallbackError) {
+        console.error('Fallback copy failed:', fallbackError);
+      }
+      document.body.removeChild(textArea);
+    }
+  };
 
   const getConversationHistory = () => {
     return messages.slice(-10).map(msg => ({
@@ -261,7 +284,7 @@ How can I help you?`,
     }
   };
 
-  const handleVoiceMessage = async (audioBlob: Blob) => {
+  const handleVoiceMessage = async (audioBlob?: Blob) => {
     try {
       // Check if speech recognition is supported
       if (!MediaService.isSpeechRecognitionSupported()) {
@@ -276,9 +299,25 @@ How can I help you?`,
         return;
       }
 
+      setIsTyping(true);
+      
+      // Add a temporary message showing we're processing
+      const processingMessage: Message = {
+        id: `processing-${Date.now()}`,
+        type: 'user',
+        content: '🎤 Processing voice message...',
+        timestamp: new Date(),
+        mode: currentMode.id,
+        isLoading: true
+      };
+      setMessages(prev => [...prev, processingMessage]);
+
       try {
         // Convert blob to text using speech recognition
         const transcript = await MediaService.startSpeechRecognition();
+        
+        // Remove processing message and add actual voice message
+        setMessages(prev => prev.filter(msg => msg.id !== processingMessage.id));
         
         const voiceMessage: Message = {
           id: Date.now().toString(),
@@ -291,7 +330,6 @@ How can I help you?`,
         setMessages(prev => [...prev, voiceMessage]);
         
         // Generate AI response
-        setIsTyping(true);
         const conversationHistory = getConversationHistory();
         const aiResponseText = await geminiService.generateResponse(transcript, conversationHistory);
         
@@ -310,6 +348,9 @@ How can I help you?`,
           MediaService.speakText(aiResponseText);
         }
       } catch (speechError) {
+        // Remove processing message
+        setMessages(prev => prev.filter(msg => msg.id !== processingMessage.id));
+        
         const errorMessage: Message = {
           id: Date.now().toString(),
           type: 'ai',
@@ -332,6 +373,22 @@ How can I help you?`,
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsTyping(false);
+    }
+  };
+
+  const handleStartVoiceRecording = async () => {
+    try {
+      await startRecording();
+    } catch (error) {
+      console.error('Failed to start recording:', error);
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        type: 'ai',
+        content: "I couldn't access your microphone. Please check your browser permissions and try again.",
+        timestamp: new Date(),
+        mode: currentMode.id
+      };
+      setMessages(prev => [...prev, errorMessage]);
     }
   };
 
@@ -569,7 +626,7 @@ How can I help you?`,
                           />
                         </div>
                       )}
-                      <div className="leading-relaxed whitespace-pre-wrap text-sm sm:text-base">
+                      <div className={`leading-relaxed whitespace-pre-wrap text-sm sm:text-base ${message.isLoading ? 'opacity-70' : ''}`}>
                         {message.content.split('**').map((part, index) => 
                           index % 2 === 1 ? <strong key={index}>{part}</strong> : part
                         )}
@@ -655,7 +712,7 @@ How can I help you?`,
               </button>
               
               <button
-                onClick={isRecording ? stopRecording : startRecording}
+                onClick={isRecording ? stopRecording : handleStartVoiceRecording}
                disabled={!MediaService.isSpeechRecognitionSupported()}
                 className={`p-2 sm:p-3 hover:bg-gray-800 rounded-xl transition-all duration-200 group ${
                  isRecording ? 'text-red-400 bg-red-400/10' : 

@@ -22,15 +22,98 @@ export class MediaService {
       
       recognition.continuous = false;
       recognition.interimResults = false;
-      recognition.lang = 'en-US';
+      recognition.lang = navigator.language || 'en-US';
+      recognition.maxAlternatives = 1;
 
       recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        resolve(transcript);
+        const transcript = event.results[0][0].transcript.trim();
+        if (transcript) {
+          resolve(transcript);
+        } else {
+          reject(new Error('No speech detected'));
+        }
+      };
+
+      recognition.onstart = () => {
+        console.log('Speech recognition started');
+      };
+
+      recognition.onend = () => {
+        console.log('Speech recognition ended');
+      };
+
+      recognition.onnomatch = () => {
+        reject(new Error('No speech was recognized'));
+      };
+
+      recognition.onspeechstart = () => {
+        console.log('Speech detected');
+      };
+
+      recognition.onspeechend = () => {
+        console.log('Speech ended');
+      };
+
+      recognition.onaudiostart = () => {
+        console.log('Audio capturing started');
+      };
+
+      recognition.onaudioend = () => {
+        console.log('Audio capturing ended');
+      };
+
+      recognition.onsoundstart = () => {
+        console.log('Sound detected');
+      };
+
+      recognition.onsoundend = () => {
+        console.log('Sound ended');
       };
 
       recognition.onerror = (event) => {
-        reject(new Error(`Speech recognition error: ${event.error}`));
+        let errorMessage = 'Speech recognition error';
+        switch (event.error) {
+          case 'no-speech':
+            errorMessage = 'No speech was detected. Please try again.';
+            break;
+          case 'audio-capture':
+            errorMessage = 'Audio capture failed. Please check your microphone.';
+            break;
+          case 'not-allowed':
+            errorMessage = 'Microphone access denied. Please allow microphone access.';
+            break;
+          case 'network':
+            errorMessage = 'Network error occurred during speech recognition.';
+            break;
+          case 'aborted':
+            errorMessage = 'Speech recognition was aborted.';
+            break;
+          case 'bad-grammar':
+            errorMessage = 'Grammar error in speech recognition.';
+            break;
+          case 'language-not-supported':
+            errorMessage = 'Language not supported for speech recognition.';
+            break;
+          default:
+            errorMessage = `Speech recognition error: ${event.error}`;
+        }
+        reject(new Error(errorMessage));
+      };
+
+      // Set a timeout to prevent hanging
+      const timeout = setTimeout(() => {
+        recognition.stop();
+        reject(new Error('Speech recognition timeout'));
+      }, 10000); // 10 seconds timeout
+
+      recognition.onresult = (event) => {
+        clearTimeout(timeout);
+        const transcript = event.results[0][0].transcript.trim();
+        if (transcript) {
+          resolve(transcript);
+        } else {
+          reject(new Error('No speech detected'));
+        }
       };
 
       recognition.start();
@@ -40,12 +123,58 @@ export class MediaService {
   // Text-to-Speech
   static speakText(text: string, options: { rate?: number; pitch?: number; volume?: number } = {}) {
     if ('speechSynthesis' in window) {
+      // Stop any ongoing speech
+      speechSynthesis.cancel();
+      
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.rate = options.rate || 1;
       utterance.pitch = options.pitch || 1;
       utterance.volume = options.volume || 1;
       
+      // Set voice to a preferred one if available
+      const voices = speechSynthesis.getVoices();
+      const preferredVoice = voices.find(voice => 
+        voice.lang.startsWith(navigator.language.split('-')[0]) && voice.default
+      ) || voices[0];
+      
+      if (preferredVoice) {
+        utterance.voice = preferredVoice;
+      }
+      
       speechSynthesis.speak(utterance);
+    }
+  }
+
+  // Stop speech synthesis
+  static stopSpeaking() {
+    if ('speechSynthesis' in window) {
+      speechSynthesis.cancel();
+    }
+  }
+
+  // Check microphone permissions
+  static async checkMicrophonePermission(): Promise<boolean> {
+    try {
+      if ('permissions' in navigator) {
+        const permission = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+        return permission.state === 'granted';
+      }
+      return false;
+    } catch (error) {
+      console.error('Error checking microphone permission:', error);
+      return false;
+    }
+  }
+
+  // Request microphone permission
+  static async requestMicrophonePermission(): Promise<boolean> {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(track => track.stop());
+      return true;
+    } catch (error) {
+      console.error('Microphone permission denied:', error);
+      return false;
     }
   }
 
