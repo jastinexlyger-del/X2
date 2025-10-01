@@ -3,17 +3,17 @@ import { geminiService } from './services/geminiService';
 import { MediaService } from './services/mediaService';
 import { MediaPreview } from './components/MediaPreview';
 import { useMediaRecorder } from './hooks/useMediaRecorder';
-import { 
-  MessageSquare, 
-  Sparkles, 
-  PenTool, 
-  Code, 
-  Brain, 
-  Plus, 
-  Send, 
-  Image, 
-  Mic, 
-  Video, 
+import {
+  MessageSquare,
+  Sparkles,
+  PenTool,
+  Code,
+  Brain,
+  Plus,
+  Send,
+  Image,
+  Mic,
+  Video,
   Circle,
   MicOff,
   Pause,
@@ -21,7 +21,9 @@ import {
   Upload,
   X,
   Copy,
-  Check
+  Check,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 
 interface Message {
@@ -94,6 +96,7 @@ function App() {
   const [dragOver, setDragOver] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -164,6 +167,31 @@ How can I assist you today?`,
       }
       document.body.removeChild(textArea);
     }
+  };
+
+  const handleSpeakMessage = (messageId: string, content: string) => {
+    if (!MediaService.isSpeechSynthesisSupported()) {
+      alert('Text-to-speech is not supported in your browser.');
+      return;
+    }
+
+    // If already speaking this message, stop it
+    if (speakingMessageId === messageId) {
+      MediaService.stopSpeaking();
+      setSpeakingMessageId(null);
+      return;
+    }
+
+    // Stop any current speech
+    MediaService.stopSpeaking();
+
+    // Clean up markdown formatting for better speech
+    const cleanContent = content.replace(/\*\*/g, '').replace(/\*/g, '');
+
+    setSpeakingMessageId(messageId);
+    MediaService.speakText(cleanContent, () => {
+      setSpeakingMessageId(null);
+    });
   };
 
   const getConversationHistory = () => {
@@ -632,7 +660,24 @@ How can I help you?`,
                         )}
                       </div>
                       {message.type === 'ai' && (
-                        <div className="flex justify-end mt-2 sm:mt-3">
+                        <div className="flex justify-end mt-2 sm:mt-3 space-x-2">
+                          <button
+                            onClick={() => handleSpeakMessage(message.id, message.content)}
+                            className="flex items-center space-x-1 px-2 py-1 text-xs text-gray-400 hover:text-white hover:bg-gray-700 rounded-md transition-colors"
+                            title={speakingMessageId === message.id ? 'Stop speaking' : 'Listen to message'}
+                          >
+                            {speakingMessageId === message.id ? (
+                              <>
+                                <VolumeX className="w-3 h-3 animate-pulse" />
+                                <span>Stop</span>
+                              </>
+                            ) : (
+                              <>
+                                <Volume2 className="w-3 h-3" />
+                                <span>Listen</span>
+                              </>
+                            )}
+                          </button>
                           <button
                             onClick={() => handleCopyMessage(message.id, message.content)}
                             className="flex items-center space-x-1 px-2 py-1 text-xs text-gray-400 hover:text-white hover:bg-gray-700 rounded-md transition-colors"

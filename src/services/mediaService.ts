@@ -121,26 +121,33 @@ export class MediaService {
   }
 
   // Text-to-Speech
-  static speakText(text: string, options: { rate?: number; pitch?: number; volume?: number } = {}) {
+  static speakText(text: string, onEnd?: () => void, options: { rate?: number; pitch?: number; volume?: number } = {}) {
     if ('speechSynthesis' in window) {
       // Stop any ongoing speech
       speechSynthesis.cancel();
-      
+
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.rate = options.rate || 1;
       utterance.pitch = options.pitch || 1;
       utterance.volume = options.volume || 1;
-      
+
       // Set voice to a preferred one if available
       const voices = speechSynthesis.getVoices();
-      const preferredVoice = voices.find(voice => 
+      const preferredVoice = voices.find(voice =>
         voice.lang.startsWith(navigator.language.split('-')[0]) && voice.default
       ) || voices[0];
-      
+
       if (preferredVoice) {
         utterance.voice = preferredVoice;
       }
-      
+
+      // Add event listener for when speech ends
+      if (onEnd) {
+        utterance.onend = () => {
+          onEnd();
+        };
+      }
+
       speechSynthesis.speak(utterance);
     }
   }
