@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { geminiService } from './services/geminiService';
 import { MediaService } from './services/mediaService';
+import { cloudTtsService } from './services/cloudTtsService';
 import { MediaPreview } from './components/MediaPreview';
 import { useMediaRecorder } from './hooks/useMediaRecorder';
 import {
@@ -169,29 +170,30 @@ How can I assist you today?`,
     }
   };
 
-  const handleSpeakMessage = (messageId: string, content: string) => {
-    if (!MediaService.isSpeechSynthesisSupported()) {
-      alert('Text-to-speech is not supported in your browser.');
-      return;
-    }
-
+  const handleSpeakMessage = async (messageId: string, content: string) => {
     // If already speaking this message, stop it
     if (speakingMessageId === messageId) {
-      MediaService.stopSpeaking();
+      cloudTtsService.stop();
       setSpeakingMessageId(null);
       return;
     }
 
     // Stop any current speech
-    MediaService.stopSpeaking();
+    cloudTtsService.stop();
 
     // Clean up markdown formatting for better speech
-    const cleanContent = content.replace(/\*\*/g, '').replace(/\*/g, '');
+    const cleanContent = content.replace(/\*\*/g, '').replace(/\*/g, '').replace(/###/g, '').replace(/##/g, '').replace(/#/g, '');
 
     setSpeakingMessageId(messageId);
-    MediaService.speakText(cleanContent, () => {
+
+    try {
+      await cloudTtsService.speak(cleanContent, () => {
+        setSpeakingMessageId(null);
+      });
+    } catch (error) {
+      console.error('Cloud TTS error:', error);
       setSpeakingMessageId(null);
-    });
+    }
   };
 
   const getConversationHistory = () => {
@@ -370,11 +372,6 @@ How can I help you?`,
         };
         
         setMessages(prev => [...prev, aiResponse]);
-        
-        // Optionally speak the response if supported
-        if (MediaService.isSpeechSynthesisSupported()) {
-          MediaService.speakText(aiResponseText);
-        }
       } catch (speechError) {
         // Remove processing message
         setMessages(prev => prev.filter(msg => msg.id !== processingMessage.id));
