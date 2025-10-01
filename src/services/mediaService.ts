@@ -120,36 +120,187 @@ export class MediaService {
     });
   }
 
-  // Text-to-Speech
+  // Text-to-Speech with enhanced cross-browser support
   static speakText(text: string, onEnd?: () => void, options: { rate?: number; pitch?: number; volume?: number } = {}) {
     if ('speechSynthesis' in window) {
       // Stop any ongoing speech
       speechSynthesis.cancel();
 
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = options.rate || 1;
-      utterance.pitch = options.pitch || 1;
-      utterance.volume = options.volume || 1;
+      // Wait a bit to ensure cancellation is complete (Chrome quirk)
+      setTimeout(() => {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = options.rate || 1;
+        utterance.pitch = options.pitch || 1;
+        utterance.volume = options.volume || 1;
 
-      // Set voice to a preferred one if available
-      const voices = speechSynthesis.getVoices();
-      const preferredVoice = voices.find(voice =>
-        voice.lang.startsWith(navigator.language.split('-')[0]) && voice.default
-      ) || voices[0];
+        // Chrome requires voices to be loaded before use
+        const setVoiceAndSpeak = () => {
+          const voices = speechSynthesis.getVoices();
 
-      if (preferredVoice) {
-        utterance.voice = preferredVoice;
-      }
+          // Try to find a high-quality voice
+          let preferredVoice = null;
 
-      // Add event listener for when speech ends
-      if (onEnd) {
-        utterance.onend = () => {
-          onEnd();
+          // Priority 1: Look for Google voices (high quality)
+          preferredVoice = voices.find(voice =>
+            voice.name.includes('Google') &&
+            voice.lang.startsWith(navigator.language.split('-')[0])
+          );
+
+          // Priority 2: Look for natural or premium voices
+          if (!preferredVoice) {
+            preferredVoice = voices.find(voice =>
+              (voice.name.includes('Natural') || voice.name.includes('Premium')) &&
+              voice.lang.startsWith(navigator.language.split('-')[0])
+            );
+          }
+
+          // Priority 3: Look for default voice in user's language
+          if (!preferredVoice) {
+            preferredVoice = voices.find(voice =>
+              voice.lang.startsWith(navigator.language.split('-')[0]) && voice.default
+            );
+          }
+
+          // Priority 4: Any voice in user's language
+          if (!preferredVoice) {
+            preferredVoice = voices.find(voice =>
+              voice.lang.startsWith(navigator.language.split('-')[0])
+            );
+          }
+
+          // Priority 5: First English voice as fallback
+          if (!preferredVoice) {
+            preferredVoice = voices.find(voice => voice.lang.startsWith('en'));
+          }
+
+          // Priority 6: Any available voice
+          if (!preferredVoice && voices.length > 0) {
+            preferredVoice = voices[0];
+          }
+
+          if (preferredVoice) {
+            utterance.voice = preferredVoice;
+          }
+
+          // Add event listeners
+          utterance.onstart = () => {
+            console.log('Speech started');
+          };
+
+          utterance.onend = () => {
+            console.log('Speech ended');
+            if (onEnd) {
+              onEnd();
+            }
+          };
+
+          utterance.onerror = (event) => {
+            console.error('Speech error:', event.error);
+            if (onEnd) {
+              onEnd();
+            }
+          };
+
+          // For longer texts, we need to handle Chrome's character limit (around 32KB)
+          // and potential pausing issues
+          if (text.length > 200) {
+            // Break into chunks for better reliability
+            const chunks = this.chunkText(text, 200);
+            this.speakChunks(chunks, onEnd, options);
+          } else {
+            speechSynthesis.speak(utterance);
+
+            // Chrome on some systems needs periodic resume calls to prevent pausing
+            const resumeInterval = setInterval(() => {
+              if (!speechSynthesis.speaking) {
+                clearInterval(resumeInterval);
+              } else if (speechSynthesis.paused) {
+                speechSynthesis.resume();
+              }
+            }, 100);
+          }
         };
-      }
 
-      speechSynthesis.speak(utterance);
+        // Voices may not be loaded immediately on some browsers
+        const voices = speechSynthesis.getVoices();
+        if (voices.length === 0) {
+          // Wait for voices to load (Chrome, Edge)
+          speechSynthesis.onvoiceschanged = () => {
+            setVoiceAndSpeak();
+          };
+        } else {
+          // Voices already loaded (Firefox, Safari)
+          setVoiceAndSpeak();
+        }
+      }, 100);
     }
+  }
+
+  // Helper function to chunk text for better TTS reliability
+  private static chunkText(text: string, maxLength: number): string[] {
+    const chunks: string[] = [];
+    const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+
+    let currentChunk = '';
+
+    for (const sentence of sentences) {
+      if ((currentChunk + sentence).length <= maxLength) {
+        currentChunk += sentence;
+      } else {
+        if (currentChunk) {
+          chunks.push(currentChunk.trim());
+        }
+        currentChunk = sentence;
+      }
+    }
+
+    if (currentChunk) {
+      chunks.push(currentChunk.trim());
+    }
+
+    return chunks;
+  }
+
+  // Helper function to speak text in chunks
+  private static speakChunks(chunks: string[], onEnd?: () => void, options: { rate?: number; pitch?: number; volume?: number } = {}) {
+    if (chunks.length === 0) {
+      if (onEnd) onEnd();
+      return;
+    }
+
+    const chunk = chunks.shift();
+    if (!chunk) {
+      if (onEnd) onEnd();
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(chunk);
+    utterance.rate = options.rate || 1;
+    utterance.pitch = options.pitch || 1;
+    utterance.volume = options.volume || 1;
+
+    const voices = speechSynthesis.getVoices();
+    const preferredVoice = voices.find(voice =>
+      voice.lang.startsWith(navigator.language.split('-')[0])
+    ) || voices[0];
+
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
+
+    utterance.onend = () => {
+      if (chunks.length > 0) {
+        this.speakChunks(chunks, onEnd, options);
+      } else {
+        if (onEnd) onEnd();
+      }
+    };
+
+    utterance.onerror = () => {
+      if (onEnd) onEnd();
+    };
+
+    speechSynthesis.speak(utterance);
   }
 
   // Stop speech synthesis
