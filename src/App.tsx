@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { geminiService } from './services/geminiService';
 import { MediaService } from './services/mediaService';
 import { cloudTtsService } from './services/cloudTtsService';
+import { chatHistoryService, Conversation } from './services/chatHistoryService';
 import { MediaPreview } from './components/MediaPreview';
 import { useMediaRecorder } from './hooks/useMediaRecorder';
 import {
@@ -24,7 +25,10 @@ import {
   Copy,
   Check,
   Volume2,
-  VolumeX
+  VolumeX,
+  History,
+  Trash2,
+  Save
 } from 'lucide-react';
 
 interface Message {
@@ -98,6 +102,10 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [savingStatus, setSavingStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -136,7 +144,7 @@ function App() {
     const welcomeMessage: Message = {
       id: Date.now().toString(),
       type: 'ai',
-      content: `Welcome to XLYGER AI! I'm your intelligent assistant powered by advanced AI. I can help you with various tasks including analyzing images, answering questions, writing assistance, coding help, and much more. 
+      content: `Welcome to XLYGER AI! I'm your intelligent assistant powered by advanced AI. I can help you with various tasks including analyzing images, answering questions, writing assistance, coding help, and much more.
 
 Current mode: **${currentMode.name}** - ${currentMode.description}
 
@@ -145,7 +153,53 @@ How can I assist you today?`,
       mode: currentMode.id
     };
     setMessages([welcomeMessage]);
+    loadConversationHistory();
   }, []);
+
+  const loadConversationHistory = async () => {
+    const history = await chatHistoryService.getConversations();
+    setConversations(history);
+  };
+
+  const saveCurrentConversation = async () => {
+    if (messages.length <= 1) return;
+
+    setSavingStatus('saving');
+
+    if (currentConversationId) {
+      await chatHistoryService.updateConversation(currentConversationId, messages);
+    } else {
+      const newId = await chatHistoryService.saveConversation(messages, currentMode.id);
+      if (newId) {
+        setCurrentConversationId(newId);
+      }
+    }
+
+    await loadConversationHistory();
+    setSavingStatus('saved');
+    setTimeout(() => setSavingStatus('idle'), 2000);
+  };
+
+  const loadConversationById = async (conversationId: string) => {
+    const loadedMessages = await chatHistoryService.loadConversation(conversationId);
+    if (loadedMessages) {
+      setMessages(loadedMessages);
+      setCurrentConversationId(conversationId);
+      setShowHistory(false);
+      setSidebarOpen(false);
+    }
+  };
+
+  const deleteConversationById = async (conversationId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm('Delete this conversation?')) {
+      await chatHistoryService.deleteConversation(conversationId);
+      await loadConversationHistory();
+      if (currentConversationId === conversationId) {
+        handleNewChat();
+      }
+    }
+  };
 
   const handleCopyMessage = async (messageId: string, content: string) => {
     try {
@@ -284,6 +338,7 @@ How can I help you in this mode?`,
 
   const handleNewChat = () => {
     setMessages([]);
+    setCurrentConversationId(null);
     const welcomeMessage: Message = {
       id: Date.now().toString(),
       type: 'ai',
@@ -294,6 +349,7 @@ How can I help you?`,
       mode: currentMode.id
     };
     setMessages([welcomeMessage]);
+    setShowHistory(false);
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -540,8 +596,8 @@ How can I help you?`,
             ))}
           </div>
           
-          {/* New Chat Button */}
-          <div className="mt-6">
+          {/* Action Buttons */}
+          <div className="mt-6 space-y-3">
             <button
               onClick={handleNewChat}
               className="w-full flex items-center justify-center space-x-2 p-4 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 rounded-xl transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:scale-105"
@@ -549,7 +605,79 @@ How can I help you?`,
               <Plus className="w-5 h-5" />
               <span>NEW CHAT</span>
             </button>
+
+            <button
+              onClick={saveCurrentConversation}
+              disabled={messages.length <= 1 || savingStatus === 'saving'}
+              className="w-full flex items-center justify-center space-x-2 p-3 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:cursor-not-allowed rounded-xl transition-all duration-200 font-medium"
+            >
+              {savingStatus === 'saving' ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-sm">Saving...</span>
+                </>
+              ) : savingStatus === 'saved' ? (
+                <>
+                  <Check className="w-4 h-4" />
+                  <span className="text-sm">Saved!</span>
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  <span className="text-sm">SAVE CHAT</span>
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={() => setShowHistory(!showHistory)}
+              className="w-full flex items-center justify-center space-x-2 p-3 bg-gray-700 hover:bg-gray-600 rounded-xl transition-all duration-200 font-medium"
+            >
+              <History className="w-4 h-4" />
+              <span className="text-sm">CHAT HISTORY</span>
+            </button>
           </div>
+
+          {/* Chat History */}
+          {showHistory && (
+            <div className="mt-6">
+              <h3 className="text-gray-400 text-sm font-medium mb-4 uppercase tracking-wide">Saved Conversations</h3>
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {conversations.length === 0 ? (
+                  <p className="text-gray-500 text-sm text-center py-4">No saved conversations yet</p>
+                ) : (
+                  conversations.map((conv) => {
+                    const mode = AI_MODES.find(m => m.id === conv.mode) || AI_MODES[3];
+                    return (
+                      <div
+                        key={conv.id}
+                        onClick={() => loadConversationById(conv.id)}
+                        className="group relative p-3 bg-gray-700/50 hover:bg-gray-700 rounded-lg cursor-pointer transition-all duration-200"
+                      >
+                        <div className="flex items-start space-x-2">
+                          <div className={`flex-shrink-0 ${mode.textColor} mt-1`}>
+                            {mode.icon}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-white truncate">{conv.title}</p>
+                            <p className="text-xs text-gray-400 mt-1">
+                              {new Date(conv.updated_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <button
+                            onClick={(e) => deleteConversationById(conv.id, e)}
+                            className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 transition-opacity"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Quick Actions */}
           <div className="mt-6">
