@@ -122,16 +122,21 @@ export class MediaService {
 
   // Text-to-Speech with enhanced cross-browser support
   static speakText(text: string, onEnd?: () => void, options: { rate?: number; pitch?: number; volume?: number } = {}) {
-    if ('speechSynthesis' in window) {
-      // Stop any ongoing speech
-      speechSynthesis.cancel();
+    if (!('speechSynthesis' in window)) {
+      console.error('Speech synthesis not supported');
+      if (onEnd) onEnd();
+      return;
+    }
 
-      // Wait a bit to ensure cancellation is complete (Chrome quirk)
-      setTimeout(() => {
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = options.rate || 1;
-        utterance.pitch = options.pitch || 1;
-        utterance.volume = options.volume || 1;
+    // Stop any ongoing speech
+    speechSynthesis.cancel();
+
+    // Wait a bit to ensure cancellation is complete (Chrome quirk)
+    setTimeout(() => {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = options.rate || 0.95;
+      utterance.pitch = options.pitch || 1;
+      utterance.volume = options.volume || 1;
 
         // Chrome requires voices to be loaded before use
         const setVoiceAndSpeak = () => {
@@ -233,7 +238,6 @@ export class MediaService {
           setVoiceAndSpeak();
         }
       }, 100);
-    }
   }
 
   // Helper function to chunk text for better TTS reliability

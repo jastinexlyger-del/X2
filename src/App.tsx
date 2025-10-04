@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { geminiService } from './services/geminiService';
 import { MediaService } from './services/mediaService';
-import { cloudTtsService } from './services/cloudTtsService';
 import { chatHistoryService, Conversation } from './services/chatHistoryService';
 import { MediaPreview } from './components/MediaPreview';
 import { useMediaRecorder } from './hooks/useMediaRecorder';
@@ -227,13 +226,13 @@ How can I assist you today?`,
   const handleSpeakMessage = async (messageId: string, content: string) => {
     // If already speaking this message, stop it
     if (speakingMessageId === messageId) {
-      cloudTtsService.stop();
+      MediaService.stopSpeaking();
       setSpeakingMessageId(null);
       return;
     }
 
     // Stop any current speech
-    cloudTtsService.stop();
+    MediaService.stopSpeaking();
 
     // Clean up markdown formatting for better speech
     const cleanContent = content.replace(/\*\*/g, '').replace(/\*/g, '').replace(/###/g, '').replace(/##/g, '').replace(/#/g, '');
@@ -241,11 +240,11 @@ How can I assist you today?`,
     setSpeakingMessageId(messageId);
 
     try {
-      await cloudTtsService.speak(cleanContent, () => {
+      MediaService.speakText(cleanContent, () => {
         setSpeakingMessageId(null);
       });
     } catch (error) {
-      console.error('Cloud TTS error:', error);
+      console.error('TTS error:', error);
       setSpeakingMessageId(null);
     }
   };
