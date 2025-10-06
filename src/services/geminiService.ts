@@ -92,15 +92,31 @@ export class GeminiService {
     try {
       const imageData = await this.fileToGenerativePart(imageFile);
       const systemPrompt = AI_MODE_PROMPTS[this.currentMode] || AI_MODE_PROMPTS.general;
-      
+
       const fullPrompt = `${systemPrompt}\n\nUser has shared an image. ${prompt}`;
-      
+
       const result = await this.model.generateContent([fullPrompt, imageData]);
       const response = await result.response;
       return response.text();
     } catch (error) {
       console.error('Error analyzing image:', error);
       return "I'm having trouble analyzing this image right now. Please try again later.";
+    }
+  }
+
+  async analyzeVideo(videoFile: File, prompt: string = "Analyze this video"): Promise<string> {
+    try {
+      const videoData = await this.fileToGenerativePart(videoFile);
+      const systemPrompt = AI_MODE_PROMPTS[this.currentMode] || AI_MODE_PROMPTS.general;
+
+      const fullPrompt = `${systemPrompt}\n\nUser has shared a video. ${prompt}\n\nPlease analyze the video content and provide a detailed text response. Describe what you see, any actions taking place, the context, and any relevant insights based on the current mode.`;
+
+      const result = await this.model.generateContent([fullPrompt, videoData]);
+      const response = await result.response;
+      return response.text();
+    } catch (error) {
+      console.error('Error analyzing video:', error);
+      return "I'm having trouble analyzing this video right now. Please try again later. Note: Video files should be under 10MB and in supported formats (MP4, WebM).";
     }
   }
 

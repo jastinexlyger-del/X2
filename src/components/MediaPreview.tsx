@@ -70,6 +70,10 @@ export const MediaPreview: React.FC<MediaPreviewProps> = ({ file, onClose, onSen
               {metadata.width}x{metadata.height} • {formatDuration(metadata.duration)}
             </div>
           )}
+          <div className="mt-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+            <p className="text-blue-400 text-sm font-medium">🎬 Video Analysis</p>
+            <p className="text-gray-300 text-xs mt-1">AI will analyze this video and provide a detailed text response about the content.</p>
+          </div>
         </div>
       );
     }

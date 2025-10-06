@@ -288,10 +288,15 @@ How can I help you in this mode?`,
       }
     }
 
+    let mediaType = 'file';
+    if (file?.type.startsWith('image/')) mediaType = 'image';
+    else if (file?.type.startsWith('video/')) mediaType = 'video';
+    else if (file?.type.startsWith('audio/')) mediaType = 'audio';
+
     const userMessage: Message = {
       id: Date.now().toString(),
       type: 'user',
-      content: content || `Shared ${file?.type.startsWith('image/') ? 'image' : 'file'}: ${file?.name}`,
+      content: content || `Shared ${mediaType}: ${file?.name}`,
       timestamp: new Date(),
       mode: currentMode.id,
       mediaFile: file,
@@ -304,9 +309,11 @@ How can I help you in this mode?`,
 
     try {
       let aiResponseText: string;
-      
+
       if (file && file.type.startsWith('image/')) {
         aiResponseText = await geminiService.analyzeImage(file, content || "Please analyze this image and provide insights based on the current mode.");
+      } else if (file && file.type.startsWith('video/')) {
+        aiResponseText = await geminiService.analyzeVideo(file, content || "Please analyze this video and provide insights based on the current mode.");
       } else {
         const conversationHistory = getConversationHistory();
         aiResponseText = await geminiService.generateResponse(content, conversationHistory);
