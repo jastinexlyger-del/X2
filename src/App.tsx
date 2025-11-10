@@ -27,7 +27,8 @@ import {
   VolumeX,
   History,
   Trash2,
-  Save
+  Save,
+  Globe
 } from 'lucide-react';
 
 interface Message {
@@ -105,6 +106,7 @@ function App() {
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [savingStatus, setSavingStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [language, setLanguage] = useState<'en' | 'sw'>('en');
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -143,17 +145,27 @@ function App() {
     const welcomeMessage: Message = {
       id: Date.now().toString(),
       type: 'ai',
-      content: `Welcome to XLYGER AI! I'm your intelligent assistant powered by advanced AI. I can help you with various tasks including analyzing images, answering questions, writing assistance, coding help, and much more.
+      content: language === 'en'
+        ? `Welcome to XLYGER AI! I'm your intelligent assistant powered by advanced AI. I can help you with various tasks including analyzing images, answering questions, writing assistance, coding help, and much more.
 
 Current mode: **${currentMode.name}** - ${currentMode.description}
 
-How can I assist you today?`,
+How can I assist you today?`
+        : `Karibu XLYGER AI! Mimi ni msaidizi wako mahiri unaotumia akili bandia ya hali ya juu. Ninaweza kukusaidia kwa kazi mbalimbali ikiwemo kuchanganua picha, kujibu maswali, kusaidia kuandika, kusaidia uwezeshaji, na mengi zaidi.
+
+Mfumo wa sasa: **${currentMode.name}** - ${currentMode.description}
+
+Ninawezaje kukusaidia leo?`,
       timestamp: new Date(),
       mode: currentMode.id
     };
     setMessages([welcomeMessage]);
     loadConversationHistory();
   }, []);
+
+  useEffect(() => {
+    geminiService.setLanguage(language);
+  }, [language]);
 
   const loadConversationHistory = async () => {
     const history = await chatHistoryService.getConversations();
@@ -972,9 +984,25 @@ How can I help you?`,
             </button>
           </div>
 
-          <div className="text-center text-xs text-gray-500 mt-3 sm:mt-4">
-            XLYGER AI can make mistakes. Please verify important information. 
-            <span className="text-pink-400 block sm:inline"> Made with ❤️ by Jastine Ayubu</span>
+          <div className="flex flex-col sm:flex-row items-center justify-between mt-3 sm:mt-4 space-y-2 sm:space-y-0">
+            <div className="text-xs text-gray-500 text-center sm:text-left">
+              {language === 'en' ? 'XLYGER AI can make mistakes. Please verify important information.' : 'XLYGER AI inaweza kufanya makosa. Tafadhali thibitisha taarifa muhimu.'}
+              <span className="text-pink-400 block sm:inline sm:ml-1">Made with ❤️ by Jastine Ayubu</span>
+            </div>
+            <button
+              onClick={() => setLanguage(language === 'en' ? 'sw' : 'en')}
+              className="flex items-center space-x-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-all duration-200 group"
+              title={language === 'en' ? 'Switch to Swahili' : 'Badili kwenda Kiingereza'}
+            >
+              <Globe className="w-4 h-4 text-pink-400 group-hover:scale-110 transition-transform" />
+              <span className="text-xs font-medium text-white">
+                {language === 'en' ? 'EN' : 'SW'}
+              </span>
+              <span className="text-xs text-gray-400">|</span>
+              <span className="text-xs text-gray-400">
+                {language === 'en' ? 'Switch to Swahili' : 'Kiingereza'}
+              </span>
+            </button>
           </div>
         </div>
       </div>
